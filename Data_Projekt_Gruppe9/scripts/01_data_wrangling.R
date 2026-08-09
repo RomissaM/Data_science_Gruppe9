@@ -66,3 +66,8 @@ length(sampleNames(MLL.A))
 
 # Verwendete Plattform
 annotation(MLL.A)
+# ------------------------------------------------------------
+# Ende des Data-Wrangling-Schritts
+# Die Daten wurden erfolgreich geladen und ihre Struktur geprüft.
+# Die weitere Verarbeitung erfolgt in 02_QA_QC.R.
+# ------------------------------------------------------------
