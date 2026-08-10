@@ -72,6 +72,15 @@ plotDensities(
 #Die Dichtekurven überlagern sich fast vollständig, was auf eine erfolgreiche Beseitigung systematischer technischer Unterschiede zwischen den Arrays hinweist. 
 #Die Daten weisen somit eine hohe Vergleichbarkeit auf und sind für die anschließenden statistischen Analysen geeignet.
 
+# ------------------------------------------------------------
+# 6. Normalisierte Daten speichern
+# ------------------------------------------------------------
+
+saveRDS(
+  MLL.A_rma,
+  file = "../data/processed/MLL_A_rma.rds"
+)
+
 # ============================================================
 # Zusammenfassung der Qualitätskontrolle
 # ============================================================
