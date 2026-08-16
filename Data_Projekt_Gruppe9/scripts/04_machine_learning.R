@@ -51,7 +51,6 @@ table(target)
 # Expressionsmatrix extrahieren
 X <- exprs(ALL)
 
-dim(X)
 
 # Für Machine Learning:
 # Samples müssen in den Zeilen und Gene in den Spalten stehen
@@ -62,17 +61,13 @@ dim(X)
 # 3. Eingabematrix für Machine Learning erstellen
 # ------------------------------------------------------------
 
-# Expressionsmatrix extrahieren
-X <- exprs(ALL)
-
-dim(X)
+# Expressionsmatrix extrahieren und transponieren
+# Patienten = Zeilen, Gene = Spalten
+X <- t(exprs(ALL))
 
 # Für Machine Learning:
 # Samples müssen in den Zeilen und Gene in den Spalten stehen
-X <- t(X)
 
-dim(X)
-X <- t(X)
 dim(X)
 nrow(X)
 length(target)
@@ -176,6 +171,7 @@ prob_test <- predict(
 # In B bzw. T umwandeln
 pred_test <- ifelse(prob_test >= 0.5, "T", "B")
 
+length(pred_test)
 # Vorhersage mit tatsächlicher Klasse vergleichen
 table(
   Tatsächlich = y_test,
@@ -247,6 +243,9 @@ table(Fold = fold_id, Klasse = target)
 # 11.3 Äußere 5-fache Cross-Validation
 # ------------------------------------------------------------
 
+# Alte Vorhersagen zurücksetzen
+cv_predictions <- rep(NA, length(target))
+
 for (i in 1:k) {
   
   # Trainings- und Testproben des aktuellen Folds
@@ -307,3 +306,34 @@ cv_cm
 cv_accuracy <- mean(cv_predictions == target)
 
 cv_accuracy
+dim(X)
+
+dim(X_train)
+dim(X_test)
+
+dim(X_train_selected)
+dim(X_test_selected)
+
+length(y_train)
+length(y_test)
+
+length(pred_test)
+dim(X_train)
+dim(X_test)
+
+dim(X_train_selected)
+dim(X_test_selected)
+
+# ------------------------------------------------------------
+# Interpretation der äußeren Cross-Validation
+# ------------------------------------------------------------
+
+# Die äußere 5-fache Cross-Validation ergab eine Accuracy von 100 %.
+# Alle 95 B-Zell- und alle 33 T-Zell-Proben wurden korrekt klassifiziert.
+# Die Feature-Auswahl wurde in jedem Fold ausschließlich anhand der
+# jeweiligen Trainingsdaten durchgeführt, wodurch Data Leakage vermieden wurde.
+#
+# Das Ergebnis deutet darauf hin, dass sich B- und T-Zell-ALL anhand
+# der Genexpressionsprofile in diesem Datensatz sehr deutlich unterscheiden.
+# Aufgrund der begrenzten Stichprobengröße sollte die Generalisierbarkeit
+# auf unabhängige externe Datensätze dennoch vorsichtig interpretiert werden.
