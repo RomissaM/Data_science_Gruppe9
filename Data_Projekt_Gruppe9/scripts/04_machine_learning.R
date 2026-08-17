@@ -53,26 +53,25 @@ X <- exprs(ALL)
 
 
 # Für Machine Learning:
-# Samples müssen in den Zeilen und Gene in den Spalten stehen
+# Samples in der Zeilen und Gene in der Spalten
 X <- t(X)
 
 dim(X)
 # ------------------------------------------------------------
-# 3. Eingabematrix für Machine Learning erstellen
+# 3.Erstellung von Eingabematrix für Machine Learning 
 # ------------------------------------------------------------
 
 # Expressionsmatrix extrahieren und transponieren
 # Patienten = Zeilen, Gene = Spalten
 X <- t(exprs(ALL))
 
-# Für Machine Learning:
-# Samples müssen in den Zeilen und Gene in den Spalten stehen
+# Für Machine Learning (kontroll):
 
 dim(X)
 nrow(X)
 length(target)
 # ------------------------------------------------------------
-# 4. Trainings- und Testdaten erstellen
+# 4. Trainings- und Testdaten 
 # ------------------------------------------------------------
 
 set.seed(123)
@@ -81,7 +80,7 @@ set.seed(123)
 idx_B <- which(target == "B")
 idx_T <- which(target == "T")
 
-# 80 % jeder Klasse für Training auswählen
+# Auswahl 80 % jeder Klasse für Training 
 train_B <- sample(idx_B, size = round(0.8 * length(idx_B)))
 train_T <- sample(idx_T, size = round(0.8 * length(idx_T)))
 
@@ -103,24 +102,25 @@ table(y_test)
 # 5. Feature-Auswahl
 # ------------------------------------------------------------
 
-# Varianz jedes Gens nur anhand der Trainingsdaten berechnen
+# Berechnung der Varianz jedes Gens anhand der Trainingsdaten 
 gene_var <- apply(X_train, 2, var)
 
-# 100 Gene mit der höchsten Varianz auswählen
+# Auswahl von 100 Gene mit der höchsten Varianz 
 top_genes <- order(gene_var, decreasing = TRUE)[1:100]
 
-# Trainings- und Testdaten auf dieselben Gene reduzieren
+# Reduzierung Trainings- und Testdaten auf dieselben Gene 
 X_train_selected <- X_train[, top_genes]
 X_test_selected  <- X_test[, top_genes]
 
-# Dimensionen kontrollieren
+# Dimensionen kontrolle
 dim(X_train_selected)
 dim(X_test_selected)
 # ------------------------------------------------------------
 # 6. LASSO-logistische Regression
 # ------------------------------------------------------------
 
-# Paket installieren, falls noch nicht vorhanden
+# Paket installieren
+
 if (!requireNamespace("glmnet", quietly = TRUE)) {
   install.packages("glmnet")
 }
@@ -129,9 +129,11 @@ library(glmnet)
 
 # Zielvariable numerisch codieren:
 # B = 0, T = 1
+
 y_train_num <- ifelse(y_train == "T", 1, 0)
 
 table(y_train_num)
+
 # ------------------------------------------------------------
 # 7. LASSO-Modell mit Cross-Validation
 # ------------------------------------------------------------
@@ -147,7 +149,9 @@ cv_model <- cv.glmnet(
 )
 
 plot(cv_model)
-# Optimale Lambda-Werte anzeigen
+
+# Optimale Lambda-Werte 
+
 cv_model$lambda.min
 cv_model$lambda.1se
 coef_min <- coef(cv_model, s = "lambda.min")
@@ -156,11 +160,13 @@ coef_min <- coef(cv_model, s = "lambda.min")
 sum(coef_min != 0)
 
 coef_min
+
 # ------------------------------------------------------------
 # 8. Vorhersage auf den Testdaten
 # ------------------------------------------------------------
 
 # Wahrscheinlichkeit für T-Zell-Klasse vorhersagen
+
 prob_test <- predict(
   cv_model,
   newx = X_test_selected,
@@ -168,26 +174,32 @@ prob_test <- predict(
   type = "response"
 )
 
-# In B bzw. T umwandeln
+# Umwandlung In B bzw. T 
+
 pred_test <- ifelse(prob_test >= 0.5, "T", "B")
 
 length(pred_test)
-# Vorhersage mit tatsächlicher Klasse vergleichen
+
+# Vergleich des Vorhersage mit tatsächlicher Klasse 
+
 table(
   Tatsächlich = y_test,
   Vorhergesagt = pred_test
 )
+
 # ------------------------------------------------------------
 # 9. Modellgüte auf den Testdaten
 # ------------------------------------------------------------
 
 accuracy <- mean(pred_test == y_test)
 accuracy
+
 # ------------------------------------------------------------
 # 10. Sensitivität und Spezifität
 # ------------------------------------------------------------
 
-# Confusion Matrix speichern
+# Confusion Matrix 
+
 cm <- table(
   Tatsächlich = y_test,
   Vorhergesagt = pred_test
@@ -196,6 +208,7 @@ cm <- table(
 cm
 
 # Werte aus der Confusion Matrix
+
 TP <- cm["T", "T"]
 TN <- cm["B", "B"]
 FP <- cm["B", "T"]
@@ -243,7 +256,9 @@ table(Fold = fold_id, Klasse = target)
 # 11.3 Äußere 5-fache Cross-Validation
 # ------------------------------------------------------------
 
-# Alte Vorhersagen zurücksetzen
+cv_probabilities <- rep(NA, length(target))
+
+# Alte Vorhersagen:
 cv_predictions <- rep(NA, length(target))
 
 for (i in 1:k) {
@@ -284,14 +299,17 @@ for (i in 1:k) {
     s = "lambda.min",
     type = "response"
   )
+cv_probabilities[test_i] <- as.numeric(prob_i)
   
   cv_predictions[test_i] <- ifelse(prob_i >= 0.5, "T", "B")
 }
+length(cv_probabilities)
+sum(is.na(cv_probabilities))
 # ------------------------------------------------------------
 # 11.4 Ergebnisse der äußeren Cross-Validation
 # ------------------------------------------------------------
 
-# Prüfen, ob für alle Proben eine Vorhersage vorliegt
+# Kontrolle: liegt für alle Proben eine Vorhersage vor?
 sum(is.na(cv_predictions))
 
 # Confusion Matrix
@@ -337,3 +355,139 @@ dim(X_test_selected)
 # der Genexpressionsprofile in diesem Datensatz sehr deutlich unterscheiden.
 # Aufgrund der begrenzten Stichprobengröße sollte die Generalisierbarkeit
 # auf unabhängige externe Datensätze dennoch vorsichtig interpretiert werden.
+
+
+# ------------------------------------------------------------
+# 12. ROC-Kurve und AUC
+# ------------------------------------------------------------
+
+# Paket install
+
+if (!requireNamespace("pROC", quietly = TRUE)) {
+  install.packages("pROC")
+}
+
+library(pROC)
+
+# Numerische Zielvariable für die Testdaten:
+# B = 0, T = 1
+y_test_num <- ifelse(y_test == "T", 1, 0)
+
+# ROC-Kurve aus den vorhergesagten Wahrscheinlichkeiten
+roc_test <- roc(
+  response = y_test_num,
+  predictor = as.numeric(prob_test)
+)
+
+# AUC Berechnung
+auc_test <- auc(roc_test)
+
+auc_test
+
+# ------------------------------------------------------------
+# 13. Vom LASSO ausgewählte Gene
+# ------------------------------------------------------------
+
+# Koeffizienten des finalen Modells bei lambda.min
+
+coef_lasso <- coef(cv_model, s = "lambda.min")
+
+# Koeffizienten als Matrix umwandeln
+coef_matrix <- as.matrix(coef_lasso)
+
+# Gene mit Koeffizient ungleich 0 bestimmen
+selected_idx <- which(coef_matrix[, 1] != 0)
+
+# Intercept entfernen
+selected_idx <- selected_idx[
+  rownames(coef_matrix)[selected_idx] != "(Intercept)"
+]
+
+# Ausgewählte Gene und ihre Koeffizienten anzeigen
+selected_genes <- data.frame(
+  Gene = rownames(coef_matrix)[selected_idx],
+  Koeffizient = coef_matrix[selected_idx, 1]
+)
+
+selected_genes
+nrow(selected_genes)
+# ------------------------------------------------------------
+# 13.1 Annotation der ausgewählten Gene
+# ------------------------------------------------------------
+
+# Passendes Annotationspaket für den hgu95av2-Chip
+if (!requireNamespace("hgu95av2.db", quietly = TRUE)) {
+  BiocManager::install("hgu95av2.db")
+}
+
+library(hgu95av2.db)
+library(AnnotationDbi)
+
+# Probe-Set-IDs annotieren
+gene_annotation <- AnnotationDbi::select(
+  hgu95av2.db,
+  keys = selected_genes$Gene,
+  keytype = "PROBEID",
+  columns = c("SYMBOL", "GENENAME")
+)
+
+gene_annotation
+# ------------------------------------------------------------
+# 13.2 Annotation mit LASSO-Koeffizienten verbinden
+# ------------------------------------------------------------
+
+selected_genes_annotated <- merge(
+  selected_genes,
+  gene_annotation,
+  by.x = "Gene",
+  by.y = "PROBEID"
+)
+
+selected_genes_annotated
+
+write.csv(
+  selected_genes_annotated,
+  "../data/processed/lasso_selected_genes.csv",
+  row.names = FALSE
+)
+
+# ------------------------------------------------------------
+# 14. Zusammenfassung der Machine-Learning-Analyse
+# ------------------------------------------------------------
+
+# Ziel:
+# Untersuchung, ob B- und T-Zell-ALL anhand ihrer
+# Genexpressionsprofile klassifiziert werden können.
+#
+# Datensatz:
+# 128 Proben
+# B-Zell-ALL: 95
+# T-Zell-ALL: 33
+#
+# Methode:
+# - Auswahl der 100 variabelsten Gene anhand der Trainingsdaten
+# - LASSO-logistische Regression
+# - interne Cross-Validation zur Wahl von lambda
+# - äußere 5-fache Cross-Validation zur Modellbewertung
+#
+# Ergebnisse:
+# Train/Test-Accuracy = 1.00
+# Sensitivität = 1.00
+# Spezifität = 1.00
+# AUC = 1.00
+#
+# Äußere 5-fache Cross-Validation:
+# 95/95 B-Zell-Proben korrekt klassifiziert
+# 33/33 T-Zell-Proben korrekt klassifiziert
+# Accuracy = 1.00
+#
+# Das finale LASSO-Modell verwendete 10 Probe-Sets.
+# Unter den ausgewählten Genen befinden sich unter anderem
+# CD3D, TRDC, SH2D1A, BLNK, CD74 und IGHM.
+#
+# Die ausgewählten Gene zeigen eine biologisch plausible
+# Beziehung zur Unterscheidung von B- und T-Zell-Proben.
+#
+# Trotz der sehr hohen Klassifikationsleistung sollte die
+# Übertragbarkeit auf unabhängige externe Datensätze
+# vorsichtig interpretiert werden.
