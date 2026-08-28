@@ -1,0 +1,587 @@
+---
+title: "06_report"
+format: html
+---
+
+# Einleitung
+
+Die akute lymphoblastische Leukämie (ALL) ist eine hämatologische
+Erkrankung, bei der sich lymphatische Vorläuferzellen unkontrolliert
+vermehren. Genexpressionsdaten ermöglichen es, molekulare Unterschiede
+zwischen Leukämieproben systematisch zu untersuchen und potenziell
+biologisch relevante Gruppen anhand ihrer Expressionsprofile zu
+identifizieren.
+
+Ziel dieser Projektarbeit ist die Anwendung von Methoden der
+Datenvorverarbeitung, Qualitätskontrolle, Dimensionsreduktion,
+Clusteranalyse und des maschinellen Lernens auf reale
+Microarray-Genexpressionsdaten.
+
+Für die Qualitätskontrolle und die explorative Analyse wurde zunächst
+der Bioconductor-Datensatz `ALLMLL` verwendet. Dieser enthält
+Affymetrix-Microarray-Rohdaten und ermöglicht dadurch die Untersuchung
+der Rohintensitäten sowie eine RMA-Normalisierung.
+
+Da der verwendete `ALLMLL`-Datensatz keine geeignete biologische
+Zielvariable für eine überwachte Klassifikation enthält, wurde für den
+Machine-Learning-Teil zusätzlich der verwandte Bioconductor-Datensatz
+`ALL` verwendet. Dieser enthält bereits verarbeitete
+Genexpressionsdaten sowie phänotypische Informationen, die eine
+Unterscheidung zwischen B-Zell-ALL und T-Zell-ALL ermöglichen.
+
+
+# Fragestellungen
+
+Die Analyse untersucht folgende Fragestellungen:
+
+1. Weisen die Microarray-Rohdaten technische Unterschiede oder
+   auffällige Proben auf und können diese durch eine geeignete
+   Normalisierung reduziert werden?
+
+2. Lassen sich anhand der Genexpressionsprofile natürliche
+   Gruppierungen der Proben mittels PCA und hierarchischem Clustering
+   erkennen?
+
+3. Können Genexpressionsprofile verwendet werden, um B-Zell-ALL und
+   T-Zell-ALL mittels eines Machine-Learning-Modells zu unterscheiden?
+
+4. Welche Gene tragen besonders zur Unterscheidung zwischen
+   B-Zell-ALL und T-Zell-ALL bei?
+
+
+# Hypothesen
+
+Für die explorative Analyse wird angenommen, dass Unterschiede in den
+Genexpressionsprofilen zu einer strukturierten Anordnung der Proben in
+PCA und Clustering führen.
+
+Für die überwachte Klassifikation wird folgende Hypothese formuliert:
+
+**H1:** B-Zell-ALL und T-Zell-ALL weisen unterschiedliche
+Genexpressionsprofile auf, sodass eine Klassifikation der beiden
+Gruppen anhand ihrer Genexpression mit einer Leistung oberhalb des
+Zufallsniveaus möglich ist.
+
+Die Nullhypothese lautet entsprechend:
+
+**H0:** Die Genexpressionsprofile enthalten keine ausreichende
+Information zur zuverlässigen Unterscheidung zwischen B-Zell-ALL und
+T-Zell-ALL.
+
+
+# Datensätze und Datenaufbereitung
+
+## ALLMLL-Datensatz
+
+Für die Qualitätskontrolle und die explorative Datenanalyse wurde der
+Bioconductor-Datensatz `ALLMLL` verwendet. Für die Analyse wurde das
+Objekt `MLL.A` geladen, das Affymetrix-Microarray-Rohdaten enthält.
+
+Der verwendete Datensatz umfasst 20 Microarrays. Die Rohdaten wurden
+zunächst hinsichtlich ihrer Intensitätsverteilungen und möglicher
+technischer Auffälligkeiten untersucht.
+
+Anschließend wurden die Expressionsdaten mit der Robust Multi-array
+Average (RMA)-Methode normalisiert. Die RMA-Normalisierung umfasst
+Hintergrundkorrektur, Quantilnormalisierung und die Zusammenfassung
+der Probe-Set-Intensitäten zu Expressionswerten.
+
+Die normalisierten Expressionsdaten wurden anschließend für die
+explorative Analyse, insbesondere PCA und Clustering, verwendet.
+
+
+## ALL-Datensatz für die Klassifikation
+
+Für die überwachte Machine-Learning-Analyse wurde der
+Bioconductor-Datensatz `ALL` verwendet. Dieser enthält bereits
+vorverarbeitete Genexpressionsdaten sowie phänotypische Informationen
+zu den untersuchten Leukämieproben.
+
+Für die Klassifikation wurden ausschließlich Proben mit
+B-Zell-ALL oder T-Zell-ALL berücksichtigt. Insgesamt standen
+128 Proben zur Verfügung, davon 95 B-Zell-ALL-Proben und
+33 T-Zell-ALL-Proben.
+
+Die Expressionsmatrix enthielt 12.625 Probe Sets. Für die weitere
+Analyse wurde die Matrix so angeordnet, dass die Zeilen den Proben
+und die Spalten den Genexpressionsmerkmalen entsprechen.
+
+
+## Vorbereitung für das Machine Learning
+
+Die 128 Proben wurden stratifiziert in Trainings- und Testdaten
+aufgeteilt. Dabei wurden 80 % der Proben für das Training und
+20 % für die unabhängige Testung verwendet.
+
+Der Trainingsdatensatz umfasste 102 Proben
+(76 B-Zell-ALL und 26 T-Zell-ALL), während der Testdatensatz
+26 Proben (19 B-Zell-ALL und 7 T-Zell-ALL) enthielt.
+
+Um die hohe Anzahl an Genexpressionsmerkmalen zu reduzieren, wurde
+eine varianzbasierte Feature-Selektion durchgeführt. Dabei wurden
+die 100 Gene bzw. Probe Sets mit der höchsten Varianz ausgewählt.
+
+Um Information Leakage zu vermeiden, erfolgte diese Feature-Selektion
+ausschließlich anhand der Trainingsdaten. Die ausgewählten Merkmale
+wurden anschließend auf die entsprechenden Testdaten übertragen.
+
+# Qualitätskontrolle und Normalisierung
+
+## Qualitätskontrolle der Rohdaten
+
+Vor der weiteren Analyse wurden die Microarray-Rohdaten des
+`ALLMLL`-Datensatzes auf technische Unterschiede und mögliche
+auffällige Arrays untersucht.
+
+Zunächst wurden Boxplots und Intensitätsverteilungen der Rohdaten
+erstellt. Dabei waren Unterschiede zwischen den einzelnen Arrays
+erkennbar, die eine Normalisierung der Daten erforderlich machten.
+
+Zusätzlich wurde mit dem Bioconductor-Paket `affyPLM` ein
+Probe-Level-Modell angepasst. Zur Beurteilung der Arrayqualität
+wurden die Relative Log Expression (RLE) und der Normalized
+Unscaled Standard Error (NUSE) untersucht.
+
+Die RLE- und NUSE-Darstellungen zeigten keine deutlich auffälligen
+Arrays, sodass keine Probe aufgrund der Qualitätskontrolle aus der
+weiteren Analyse ausgeschlossen wurde.
+
+
+## RMA-Normalisierung
+
+Zur Normalisierung der Microarray-Daten wurde die Robust Multi-array
+Average (RMA)-Methode verwendet.
+
+Die RMA-Verarbeitung umfasst Hintergrundkorrektur,
+Quantilnormalisierung und die Zusammenfassung der Probe-Set-Signale
+zu Expressionswerten.
+
+Nach der Normalisierung wurden die Expressionsverteilungen erneut
+mithilfe von Boxplots und Dichteverteilungen kontrolliert. Im
+Vergleich zu den Rohdaten zeigten die normalisierten Arrays
+vergleichbarere Expressionsverteilungen.
+
+Die normalisierten Expressionswerte wurden anschließend als
+Grundlage für die explorative Analyse und das Clustering verwendet.
+
+
+## Zwischenfazit
+
+Die Qualitätskontrolle ergab keine Hinweise auf stark auffällige
+Arrays, die aus dem Datensatz entfernt werden mussten. Durch die
+RMA-Normalisierung wurden technische Unterschiede zwischen den
+Expressionsverteilungen reduziert und eine vergleichbare Grundlage
+für die nachfolgenden Analysen geschaffen.
+
+
+# Explorative Datenanalyse und Clustering
+
+## Hauptkomponentenanalyse
+
+Zur explorativen Untersuchung der normalisierten Genexpressionsdaten
+wurde eine Hauptkomponentenanalyse (Principal Component Analysis, PCA)
+durchgeführt.
+
+Die PCA reduziert die hohe Dimensionalität der Genexpressionsdaten
+auf wenige Hauptkomponenten. Dadurch können Ähnlichkeiten und
+Unterschiede zwischen den Proben visuell untersucht werden, ohne
+vorher eine Klassenzugehörigkeit für die Proben vorzugeben.
+
+Die PCA zeigte eine Strukturierung der untersuchten Proben anhand
+ihrer Genexpressionsprofile. Dies deutet darauf hin, dass zwischen
+den Proben systematische Unterschiede in der Genexpression vorhanden
+sind.
+
+
+## Hierarchisches Clustering
+
+Zusätzlich wurde ein hierarchisches Clustering der normalisierten
+Expressionsdaten durchgeführt. Dabei werden Proben entsprechend der
+Ähnlichkeit ihrer Genexpressionsprofile schrittweise zu Gruppen
+zusammengefasst.
+
+Das Clustering ermöglicht eine unüberwachte Untersuchung der
+Datenstruktur, da die Gruppierung ausschließlich auf den
+Expressionsdaten basiert und keine vorher definierten Klassen
+verwendet werden.
+
+Die resultierenden Cluster zeigten, dass Proben mit ähnlichen
+Expressionsmustern gemeinsam gruppiert werden können.
+
+
+## Bewertung der Clusterstruktur
+
+Zur quantitativen Bewertung der Clusterstruktur wurde zusätzlich
+die Silhouettenanalyse verwendet. Der Silhouettenkoeffizient
+beschreibt, wie gut eine Probe zu ihrem eigenen Cluster im Vergleich
+zu anderen Clustern passt.
+
+Die Analyse wurde verwendet, um die Trennbarkeit der gefundenen
+Gruppen zu beurteilen und die Ergebnisse des explorativen
+Clusterings zu ergänzen.
+
+
+## Zwischenfazit
+
+Die PCA und das hierarchische Clustering zeigen, dass die
+Genexpressionsdaten eine erkennbare interne Struktur besitzen.
+Damit liefern die explorativen Analysen Hinweise darauf, dass
+Expressionsunterschiede zwischen den untersuchten Proben vorhanden
+sind.
+
+Da diese Analysen unüberwacht durchgeführt wurden, erlauben sie
+jedoch noch keine Aussage darüber, wie zuverlässig bestimmte
+biologische Klassen vorhergesagt werden können. Diese Fragestellung
+wird im folgenden Machine-Learning-Teil anhand der B- und
+T-Zell-ALL-Proben untersucht.
+
+# Machine Learning
+
+## Ziel der Klassifikation
+
+Ziel der überwachten Machine-Learning-Analyse war die Klassifikation
+der Leukämieproben als B-Zell-ALL oder T-Zell-ALL anhand ihrer
+Genexpressionsprofile.
+
+Die Klassenzugehörigkeit wurde als binäre Zielvariable definiert,
+wobei B-Zell-ALL als Klasse 0 und T-Zell-ALL als Klasse 1
+kodiert wurde.
+
+
+## Feature-Selektion
+
+Da die Anzahl der Genexpressionsmerkmale mit 12.625 Probe Sets
+deutlich größer als die Anzahl der Proben war, wurde vor der
+Modellierung eine Feature-Selektion durchgeführt.
+
+Dazu wurden anhand der Trainingsdaten die 100 Probe Sets mit der
+höchsten Varianz ausgewählt. Die Feature-Selektion wurde
+ausschließlich auf den jeweiligen Trainingsdaten durchgeführt,
+um Information Leakage zwischen Trainings- und Testdaten zu
+vermeiden.
+
+
+## LASSO-logistische Regression
+
+Für die Klassifikation wurde eine logistische Regression mit
+LASSO-Regularisierung verwendet. Die LASSO-Regularisierung kann
+Koeffizienten weniger relevanter Merkmale auf null setzen und
+dadurch gleichzeitig eine Merkmalsauswahl durchführen.
+
+Der Regularisierungsparameter Lambda wurde mithilfe einer
+internen 5-fachen Cross-Validation bestimmt. Für das Modell wurde
+der Wert `lambda.min` verwendet.
+
+
+## Evaluation mit Train-/Test-Aufteilung
+
+Zunächst wurde das Modell anhand einer stratifizierten
+80/20-Aufteilung evaluiert.
+
+Das Trainingsset enthielt 102 Proben und das unabhängige Testset
+26 Proben. Im Testset wurden alle 19 B-Zell-ALL-Proben und alle
+7 T-Zell-ALL-Proben korrekt klassifiziert.
+
+Damit ergaben sich für das Testset:
+
+- Accuracy = 1,00
+- Sensitivität = 1,00
+- Spezifität = 1,00
+
+In diesem Testdatensatz trat somit keine Fehlklassifikation auf.
+
+
+## Äußere 5-fache Cross-Validation
+
+Um die Stabilität der Klassifikation zusätzlich zu untersuchen,
+wurde eine äußere stratifizierte 5-fache Cross-Validation
+durchgeführt.
+
+In jedem äußeren Fold wurden die Feature-Selektion und das Training
+des LASSO-Modells ausschließlich anhand der jeweiligen Trainingsdaten
+durchgeführt. Die zurückgehaltenen Proben wurden anschließend zur
+Evaluation verwendet.
+
+Über alle fünf Folds wurden sämtliche 128 Proben korrekt
+klassifiziert:
+
+| Tatsächliche Klasse | Vorhergesagt B | Vorhergesagt T |
+|---------------------|---------------:|---------------:|
+| B-Zell-ALL          | 95             | 0              |
+| T-Zell-ALL          | 0              | 33             |
+
+Die Accuracy der äußeren Cross-Validation betrug damit 1,00.
+
+
+## ROC-Analyse
+
+Zusätzlich wurden für die Proben der äußeren Cross-Validation
+Klassifikationswahrscheinlichkeiten berechnet und daraus eine
+ROC-Kurve erstellt.
+
+Die Fläche unter der ROC-Kurve (AUC) betrug:
+
+**AUC = 1,00**
+
+Damit zeigte das Modell in diesem Datensatz eine vollständige
+Trennung zwischen B-Zell-ALL und T-Zell-ALL.
+
+
+## Vom LASSO-Modell ausgewählte Gene
+
+Das LASSO-Modell reduzierte die für die Klassifikation verwendeten
+Merkmale auf 10 Probe Sets mit Koeffizienten ungleich null.
+Die Probe Sets wurden anschließend mit den entsprechenden
+Gensymbolen annotiert.
+
+| Gen | Richtung des Koeffizienten |
+|-----|----------------------------|
+| CD3D | positiv |
+| CD9 | negativ |
+| YBX3 | negativ |
+| BLNK | negativ |
+| FOXO1 | negativ |
+| IGHM | negativ |
+| TRDC | positiv |
+| CD74 | negativ |
+| HLA-DPA1 | negativ |
+| SH2D1A | positiv |
+
+Da T-Zell-ALL als Klasse 1 kodiert wurde, erhöhen positive
+Koeffizienten die Vorhersage in Richtung T-Zell-ALL, während
+negative Koeffizienten die Vorhersage in Richtung B-Zell-ALL
+verschieben.
+
+Insbesondere CD3D und TRDC zeigen damit einen Zusammenhang mit
+der T-Zell-Klassifikation, während beispielsweise CD74 und IGHM
+in Richtung der B-Zell-Klassifikation wirken.
+
+
+## Zwischenfazit
+
+Das LASSO-Modell konnte B-Zell-ALL und T-Zell-ALL innerhalb des
+untersuchten Datensatzes vollständig voneinander unterscheiden.
+Sowohl die äußere 5-fache Cross-Validation als auch die ROC-Analyse
+ergaben eine perfekte Klassifikationsleistung.
+
+Diese Ergebnisse zeigen, dass die Genexpressionsprofile starke
+Informationen zur Unterscheidung der beiden untersuchten
+ALL-Gruppen enthalten. Die perfekte Modellleistung sollte jedoch
+vorsichtig interpretiert werden, da sie zunächst nur für den
+untersuchten Datensatz und die verwendete Evaluationsstrategie
+gezeigt wurde. Eine Validierung an einem vollständig unabhängigen
+externen Datensatz wäre notwendig, um die Übertragbarkeit des
+Modells auf neue Patientenkohorten zu beurteilen.
+
+
+# Visualisierung und biologische Interpretation
+
+## Confusion Matrix
+
+Die Confusion Matrix der äußeren 5-fachen Cross-Validation zeigt,
+dass alle 128 Proben korrekt klassifiziert wurden.
+
+Alle 95 B-Zell-ALL-Proben wurden als B-Zell-ALL und alle
+33 T-Zell-ALL-Proben als T-Zell-ALL vorhergesagt. Es traten keine
+falsch positiven oder falsch negativen Klassifikationen auf.
+
+Diese Darstellung bestätigt die sehr hohe Trennleistung des
+LASSO-Modells innerhalb des untersuchten Datensatzes.
+
+
+## ROC-Kurve
+
+Die ROC-Kurve wurde auf Grundlage der vorhergesagten
+Klassifikationswahrscheinlichkeiten aus der äußeren
+Cross-Validation erstellt.
+
+Mit einer AUC von 1,00 zeigt sich eine vollständige Trennung
+zwischen B-Zell-ALL und T-Zell-ALL.
+
+Die ROC-Analyse bestätigt damit die Ergebnisse der Confusion Matrix.
+
+
+## LASSO-Koeffizienten
+
+Die Darstellung der LASSO-Koeffizienten zeigt, welche Gene vom
+Modell für die Klassifikation ausgewählt wurden und in welche
+Richtung sie die Vorhersage beeinflussen.
+
+Da T-Zell-ALL als Klasse 1 definiert wurde, verschieben positive
+Koeffizienten die Modellvorhersage in Richtung T-Zell-ALL.
+Negative Koeffizienten verschieben sie in Richtung B-Zell-ALL.
+
+Zu den Genen mit positiven Koeffizienten gehören unter anderem
+`CD3D`, `TRDC` und `SH2D1A`.
+
+Zu den Genen mit negativen Koeffizienten gehören unter anderem
+`CD74`, `IGHM`, `BLNK`, `CD9`, `YBX3`, `FOXO1` und `HLA-DPA1`.
+
+
+## Expression von CD3D
+
+Der Boxplot für `CD3D` zeigt einen deutlichen Unterschied zwischen
+B-Zell-ALL und T-Zell-ALL.
+
+Die Expression von `CD3D` ist in den T-Zell-ALL-Proben deutlich
+höher als in den B-Zell-ALL-Proben.
+
+Dieses Expressionsmuster stimmt mit dem positiven
+LASSO-Koeffizienten von `CD3D` überein und erklärt, warum dieses
+Gen zur Klassifikation in Richtung T-Zell-ALL beiträgt.
+
+
+## Expression von CD74
+
+Auch für `CD74` zeigt sich ein deutlicher Expressionsunterschied
+zwischen den beiden Klassen.
+
+Die Expression von `CD74` ist in den B-Zell-ALL-Proben höher als
+in den T-Zell-ALL-Proben.
+
+Dies stimmt mit dem negativen LASSO-Koeffizienten von `CD74`
+überein und unterstützt seine Bedeutung für die Klassifikation
+in Richtung B-Zell-ALL.
+
+
+## Heatmap der ausgewählten Gene
+
+Die Heatmap der 10 vom LASSO-Modell ausgewählten Gene zeigt
+deutlich unterschiedliche Expressionsmuster zwischen den
+B-Zell-ALL- und T-Zell-ALL-Proben.
+
+Die hierarchische Gruppierung der Proben führt zu zwei deutlich
+unterschiedlichen Bereichen, die weitgehend mit den beiden
+biologischen Klassen übereinstimmen.
+
+Gene wie `CD3D`, `TRDC` und `SH2D1A` zeigen insbesondere bei
+T-Zell-ALL eine erhöhte relative Expression.
+
+Andere Gene wie `CD74`, `IGHM` und `BLNK` zeigen dagegen stärkere
+Expressionssignale in den B-Zell-ALL-Proben.
+
+Die Heatmap verdeutlicht damit, dass nicht nur einzelne Gene,
+sondern ein kombiniertes Expressionsmuster der ausgewählten Gene
+zur Trennung der beiden Klassen beiträgt.
+
+
+## Zwischenfazit
+
+Die unterschiedlichen Visualisierungen liefern konsistente
+Ergebnisse.
+
+Die Confusion Matrix und die ROC-Kurve zeigen eine sehr hohe
+Modellleistung, während die LASSO-Koeffizienten, Boxplots und
+die Heatmap die zugrunde liegenden Unterschiede in den
+Genexpressionsmustern sichtbar machen.
+
+Damit unterstützen die Visualisierungen sowohl die statistische
+Bewertung des Klassifikationsmodells als auch die Interpretation
+der vom LASSO-Modell ausgewählten Gene.
+
+# Diskussion
+
+Die Ergebnisse zeigen, dass Genexpressionsdaten eine deutliche
+molekulare Struktur aufweisen und zur Unterscheidung verschiedener
+Leukämiegruppen genutzt werden können.
+
+Die explorative Analyse des `ALLMLL`-Datensatzes zeigte, dass nach
+der Qualitätskontrolle und RMA-Normalisierung keine stark auffälligen
+Arrays identifiziert werden mussten. PCA und Clustering lieferten
+Hinweise auf eine Strukturierung der Proben anhand ihrer
+Expressionsprofile.
+
+Für die überwachte Klassifikation wurde der `ALL`-Datensatz verwendet,
+da dieser geeignete phänotypische Informationen zur Unterscheidung
+zwischen B-Zell-ALL und T-Zell-ALL enthält.
+
+Das LASSO-Modell erreichte sowohl bei der Train-/Test-Evaluation als
+auch bei der äußeren 5-fachen Cross-Validation eine sehr hohe
+Klassifikationsleistung. In der äußeren Cross-Validation wurden alle
+128 Proben korrekt klassifiziert und eine AUC von 1,00 erreicht.
+
+Die ausgewählten Gene liefern eine mögliche biologische Erklärung
+für diese deutliche Trennung. Beispielsweise zeigte `CD3D` eine
+deutlich höhere Expression in den T-Zell-ALL-Proben und besaß einen
+positiven LASSO-Koeffizienten. `CD74` zeigte dagegen eine höhere
+Expression in den B-Zell-ALL-Proben und einen negativen Koeffizienten.
+
+Auch die Heatmap der 10 vom LASSO-Modell ausgewählten Gene zeigte
+unterschiedliche Expressionsmuster zwischen den beiden Klassen.
+Damit stimmen die Ergebnisse der Modellierung und der
+Expressionsvisualisierung miteinander überein.
+
+
+## Limitationen
+
+Trotz der sehr hohen Klassifikationsleistung müssen die Ergebnisse
+vorsichtig interpretiert werden.
+
+Eine wesentliche Einschränkung ist die begrenzte Anzahl an Proben.
+Insbesondere die T-Zell-ALL-Gruppe ist mit 33 Proben deutlich kleiner
+als die B-Zell-ALL-Gruppe mit 95 Proben.
+
+Darüber hinaus wurde die Modellleistung zwar mittels einer äußeren
+5-fachen Cross-Validation untersucht, jedoch nicht anhand eines
+vollständig unabhängigen externen Datensatzes validiert. Eine
+Accuracy und AUC von jeweils 1,00 zeigen daher eine perfekte Trennung
+innerhalb des untersuchten Datensatzes, garantieren jedoch nicht,
+dass dieselbe Leistung bei neuen Patientenkohorten erreicht wird.
+
+Eine weitere Einschränkung besteht darin, dass für unterschiedliche
+Analyseschritte zwei Datensätze verwendet wurden. `ALLMLL` wurde für
+Qualitätskontrolle, Normalisierung und explorative Analysen verwendet,
+während die B-/T-Zell-Klassifikation mit dem `ALL`-Datensatz
+durchgeführt wurde. Die Ergebnisse dieser beiden Analysenteile
+sollten daher nicht als direkte Analyse derselben Proben interpretiert
+werden.
+
+Außerdem zeigen die vom LASSO-Modell ausgewählten Gene statistische
+Zusammenhänge mit der Klassifikation. Aus den Koeffizienten kann
+jedoch keine kausale Rolle der Gene bei der Entstehung der Erkrankung
+abgeleitet werden.
+
+Für weiterführende Untersuchungen wäre insbesondere eine Validierung
+des Klassifikationsmodells mit einer unabhängigen Kohorte sinnvoll.
+Zusätzlich könnten alternative Klassifikationsverfahren mit dem
+LASSO-Modell verglichen werden.
+
+# Fazit
+
+Im Rahmen dieser Projektarbeit wurden verschiedene Methoden der
+Datenanalyse auf Microarray-Genexpressionsdaten akuter
+lymphoblastischer Leukämien angewendet. Die Analyse umfasste
+Qualitätskontrolle, Normalisierung, explorative Datenanalyse,
+Clustering sowie eine überwachte Klassifikation mittels
+Machine Learning.
+
+Die Qualitätskontrolle des `ALLMLL`-Datensatzes ergab keine stark
+auffälligen Arrays. Nach der RMA-Normalisierung standen vergleichbare
+Expressionsdaten für die explorative Analyse zur Verfügung. PCA und
+Clustering zeigten, dass die Genexpressionsdaten eine erkennbare
+interne Struktur besitzen.
+
+Für die Klassifikation von B-Zell-ALL und T-Zell-ALL wurde auf
+Grundlage des `ALL`-Datensatzes eine LASSO-logistische Regression
+entwickelt. In der äußeren 5-fachen Cross-Validation wurden alle
+128 untersuchten Proben korrekt klassifiziert. Die Accuracy betrug
+1,00 und die ROC-Analyse ergab eine AUC von 1,00.
+
+Das LASSO-Modell identifizierte 10 Gene bzw. Probe Sets, die zur
+Unterscheidung der beiden Klassen beitrugen. Die Expressionsmuster
+ausgewählter Gene wie `CD3D` und `CD74` sowie die Heatmap der
+ausgewählten Gene unterstützten die beobachtete Trennung zwischen
+B-Zell-ALL und T-Zell-ALL.
+
+Insgesamt zeigen die Ergebnisse, dass Genexpressionsdaten in dem
+untersuchten Datensatz eine sehr deutliche Unterscheidung zwischen
+B-Zell-ALL und T-Zell-ALL ermöglichen. Die Ergebnisse unterstützen
+damit die aufgestellte Hypothese, dass die beiden Gruppen
+unterschiedliche Genexpressionsprofile aufweisen, die für eine
+Klassifikation genutzt werden können.
+
+Aufgrund der begrenzten Stichprobengröße und der fehlenden externen
+Validierung sollte die perfekte Klassifikationsleistung jedoch nicht
+als allgemeingültige Vorhersageleistung interpretiert werden. Eine
+Validierung an einer unabhängigen Patientenkohorte wäre ein sinnvoller
+nächster Schritt.
