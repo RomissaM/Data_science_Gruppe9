@@ -1,6 +1,14 @@
 ---
-title: "06_report"
-format: html
+title: "Data Science Projekt - Gruppe 9"
+author:
+  - Erfan Abollahzadegohari
+  - Romisa Moslemi
+  - Shaghayegh Rokhsarighadikolaei
+  - Kimiya Sohrabzadeh
+  - Farbod Moayed
+format:
+  html:
+    embed-resources: true
 ---
 
 # Einleitung
@@ -89,6 +97,8 @@ der Probe-Set-Intensitäten zu Expressionswerten.
 Die normalisierten Expressionsdaten wurden anschließend für die
 explorative Analyse, insbesondere PCA und Clustering, verwendet.
 
+```{r, code=readLines("01_data_wrangling.R")}
+```
 
 ## ALL-Datensatz für die Klassifikation
 
@@ -119,14 +129,15 @@ Der Trainingsdatensatz umfasste 102 Proben
 
 Um die hohe Anzahl an Genexpressionsmerkmalen zu reduzieren, wurde
 eine varianzbasierte Feature-Selektion durchgeführt. Dabei wurden
-die 100 Gene bzw. Probe Sets mit der höchsten Varianz ausgewählt.
+die 100 Probe Sets mit der höchsten Varianz ausgewählt.
 
 Um Information Leakage zu vermeiden, erfolgte diese Feature-Selektion
 ausschließlich anhand der Trainingsdaten. Die ausgewählten Merkmale
 wurden anschließend auf die entsprechenden Testdaten übertragen.
 
 # Qualitätskontrolle und Normalisierung
-
+```{r, code=readLines("02_QA_QC.R")}
+```
 ## Qualitätskontrolle der Rohdaten
 
 Vor der weiteren Analyse wurden die Microarray-Rohdaten des
@@ -175,7 +186,8 @@ für die nachfolgenden Analysen geschaffen.
 
 
 # Explorative Datenanalyse und Clustering
-
+```{r, code=readLines("03_clustering.R")}
+```
 ## Hauptkomponentenanalyse
 
 Zur explorativen Untersuchung der normalisierten Genexpressionsdaten
@@ -205,20 +217,9 @@ Datenstruktur, da die Gruppierung ausschließlich auf den
 Expressionsdaten basiert und keine vorher definierten Klassen
 verwendet werden.
 
-Die resultierenden Cluster zeigten, dass Proben mit ähnlichen
-Expressionsmustern gemeinsam gruppiert werden können.
-
-
-## Bewertung der Clusterstruktur
-
-Zur quantitativen Bewertung der Clusterstruktur wurde zusätzlich
-die Silhouettenanalyse verwendet. Der Silhouettenkoeffizient
-beschreibt, wie gut eine Probe zu ihrem eigenen Cluster im Vergleich
-zu anderen Clustern passt.
-
-Die Analyse wurde verwendet, um die Trennbarkeit der gefundenen
-Gruppen zu beurteilen und die Ergebnisse des explorativen
-Clusterings zu ergänzen.
+Das hierarchische Clustering zeigte Gruppen von Proben mit ähnlichen
+Expressionsmustern. Eine biologische Zuordnung dieser Gruppen ist
+anhand der im ALLMLL-Datensatz verfügbaren Metadaten jedoch nicht möglich.
 
 
 ## Zwischenfazit
@@ -236,7 +237,8 @@ wird im folgenden Machine-Learning-Teil anhand der B- und
 T-Zell-ALL-Proben untersucht.
 
 # Machine Learning
-
+```{r, code=readLines("04_machine_learning.R")}
+```
 ## Ziel der Klassifikation
 
 Ziel der überwachten Machine-Learning-Analyse war die Klassifikation
@@ -327,7 +329,7 @@ Damit zeigte das Modell in diesem Datensatz eine vollständige
 Trennung zwischen B-Zell-ALL und T-Zell-ALL.
 
 
-## Vom LASSO-Modell ausgewählte Gene
+## Vom LASSO-Modell ausgewählte Probe-Sets
 
 Das LASSO-Modell reduzierte die für die Klassifikation verwendeten
 Merkmale auf 10 Probe Sets mit Koeffizienten ungleich null.
@@ -375,7 +377,8 @@ Modells auf neue Patientenkohorten zu beurteilen.
 
 
 # Visualisierung und biologische Interpretation
-
+```{r, code=readLines("05_visualisierung.R")}
+```
 ## Confusion Matrix
 
 Die Confusion Matrix der äußeren 5-fachen Cross-Validation zeigt,
@@ -567,8 +570,7 @@ entwickelt. In der äußeren 5-fachen Cross-Validation wurden alle
 128 untersuchten Proben korrekt klassifiziert. Die Accuracy betrug
 1,00 und die ROC-Analyse ergab eine AUC von 1,00.
 
-Das LASSO-Modell identifizierte 10 Gene bzw. Probe Sets, die zur
-Unterscheidung der beiden Klassen beitrugen. Die Expressionsmuster
+Das LASSO-Modell selektierte 10 Probe-Sets, die anschließend Gensymbolen zugeordnet wurden und zur Unterscheidung der beiden Klassen beitrugen. Die Expressionsmuster
 ausgewählter Gene wie `CD3D` und `CD74` sowie die Heatmap der
 ausgewählten Gene unterstützten die beobachtete Trennung zwischen
 B-Zell-ALL und T-Zell-ALL.
@@ -585,3 +587,17 @@ Validierung sollte die perfekte Klassifikationsleistung jedoch nicht
 als allgemeingültige Vorhersageleistung interpretiert werden. Eine
 Validierung an einer unabhängigen Patientenkohorte wäre ein sinnvoller
 nächster Schritt.
+
+## Verwendung KI-gestützter Werkzeuge
+
+Im Rahmen dieser Projektarbeit wurde ChatGPT unterstützend eingesetzt.
+Die Nutzung umfasste insbesondere die Erklärung einzelner Methoden und
+R-Funktionen, die Klärung von Unklarheiten und nicht vollständig
+verstandenen Inhalten, die Unterstützung bei der Erstellung und
+Fehlersuche von R-Code sowie bei der Behebung von Render-,
+Paketinstallations- und Quarto-Ausgabeproblemen, einschließlich der
+Anpassung der HTML-Ausgabe zur Vermeidung technischer Probleme beim
+Committen in Git. Darüber hinaus wurde ChatGPT zur sprachlichen
+Überarbeitung einzelner Textpassagen verwendet. Die verwendeten
+Vorschläge wurden von den Gruppenmitgliedern geprüft, nachvollzogen
+und gegebenenfalls angepasst.

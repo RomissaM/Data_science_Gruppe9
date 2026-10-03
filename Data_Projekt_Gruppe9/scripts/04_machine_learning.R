@@ -15,7 +15,10 @@
 if (!require("BiocManager", quietly = TRUE))
   install.packages("BiocManager")
 
-BiocManager::install("ALL")
+if (!requireNamespace("ALL", quietly = TRUE)) {
+  BiocManager::install("ALL")
+}
+
 library(ALL)
 data(ALL)
 
@@ -45,24 +48,12 @@ target <- factor(target)
 # Verteilung der Zielvariable kontrollieren
 table(target)
 # ------------------------------------------------------------
-# 3. Eingabematrix für Machine Learning erstellen
-# ------------------------------------------------------------
 
-# Expressionsmatrix extrahieren
-X <- exprs(ALL)
-
-
-# Für Machine Learning:
-# Samples in der Zeilen und Gene in der Spalten
-X <- t(X)
-
-dim(X)
-# ------------------------------------------------------------
 # 3.Erstellung von Eingabematrix für Machine Learning 
 # ------------------------------------------------------------
 
 # Expressionsmatrix extrahieren und transponieren
-# Patienten = Zeilen, Gene = Spalten
+# 
 X <- t(exprs(ALL))
 
 # Für Machine Learning (kontroll):
@@ -102,13 +93,13 @@ table(y_test)
 # 5. Feature-Auswahl
 # ------------------------------------------------------------
 
-# Berechnung der Varianz jedes Gens anhand der Trainingsdaten 
+# Berechnung der Varianz jedes Probe-Sets anhand der Trainingsdaten
 gene_var <- apply(X_train, 2, var)
 
-# Auswahl von 100 Gene mit der höchsten Varianz 
+# Auswahl der 100 Probe-Sets mit der höchsten Varianz 
 top_genes <- order(gene_var, decreasing = TRUE)[1:100]
 
-# Reduzierung Trainings- und Testdaten auf dieselben Gene 
+# Reduzierung von Trainings- und Testdaten auf dieselben Probe-Sets 
 X_train_selected <- X_train[, top_genes]
 X_test_selected  <- X_test[, top_genes]
 
@@ -122,7 +113,7 @@ dim(X_test_selected)
 # Paket installieren
 
 if (!requireNamespace("glmnet", quietly = TRUE)) {
-  install.packages("glmnet")
+  install.packages("glmnet", repos = "https://cloud.r-project.org")
 }
 
 library(glmnet)
@@ -364,7 +355,7 @@ dim(X_test_selected)
 # Paket install
 
 if (!requireNamespace("pROC", quietly = TRUE)) {
-  install.packages("pROC")
+  install.packages("pROC", repos = "https://cloud.r-project.org")
 }
 
 library(pROC)
@@ -385,7 +376,7 @@ auc_test <- auc(roc_test)
 auc_test
 
 # ------------------------------------------------------------
-# 13. Vom LASSO ausgewählte Gene
+# 13. Vom LASSO ausgewählte Probe-Sets
 # ------------------------------------------------------------
 
 # Koeffizienten des finalen Modells bei lambda.min
@@ -395,7 +386,7 @@ coef_lasso <- coef(cv_model, s = "lambda.min")
 # Koeffizienten als Matrix umwandeln
 coef_matrix <- as.matrix(coef_lasso)
 
-# Gene mit Koeffizient ungleich 0 bestimmen
+# Probe-Sets mit Koeffizient ungleich 0 bestimmen
 selected_idx <- which(coef_matrix[, 1] != 0)
 
 # Intercept entfernen
@@ -403,9 +394,9 @@ selected_idx <- selected_idx[
   rownames(coef_matrix)[selected_idx] != "(Intercept)"
 ]
 
-# Ausgewählte Gene und ihre Koeffizienten anzeigen
+# Ausgewählte Probe-Sets und ihre Koeffizienten anzeigen
 selected_genes <- data.frame(
-  Gene = rownames(coef_matrix)[selected_idx],
+  ProbeSet = rownames(coef_matrix)[selected_idx],
   Koeffizient = coef_matrix[selected_idx, 1]
 )
 
@@ -426,7 +417,7 @@ library(AnnotationDbi)
 # Probe-Set-IDs annotieren
 gene_annotation <- AnnotationDbi::select(
   hgu95av2.db,
-  keys = selected_genes$Gene,
+  keys = selected_genes$ProbeSet,
   keytype = "PROBEID",
   columns = c("SYMBOL", "GENENAME")
 )
@@ -439,7 +430,7 @@ gene_annotation
 selected_genes_annotated <- merge(
   selected_genes,
   gene_annotation,
-  by.x = "Gene",
+  by.x = "ProbeSet",
   by.y = "PROBEID"
 )
 
@@ -465,7 +456,7 @@ write.csv(
 # T-Zell-ALL: 33
 #
 # Methode:
-# - Auswahl der 100 variabelsten Gene anhand der Trainingsdaten
+#- Auswahl der 100 variabelsten Probe-Sets anhand der Trainingsdaten
 # - LASSO-logistische Regression
 # - interne Cross-Validation zur Wahl von lambda
 # - äußere 5-fache Cross-Validation zur Modellbewertung

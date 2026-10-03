@@ -47,7 +47,7 @@ class(MLL.A)
 sampleNames(MLL.A)
 # Informationen zu den Patienten (Metadaten)
 
-pData
+pData(MLL.A)
 # ------------------------------------------------------------
 # Struktur des Datensatzes untersuchen
 # ------------------------------------------------------------

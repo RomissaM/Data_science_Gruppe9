@@ -12,7 +12,7 @@ cm_df
 # ------------------------------------------------------------
 
 if (!requireNamespace("ggplot2", quietly = TRUE)) {
-  install.packages("ggplot2")
+  install.packages("ggplot2", repos = "https://cloud.r-project.org")
 }
 
 library(ggplot2)
@@ -169,7 +169,7 @@ ggplot(
   guides(fill = "none")
 
 if (!requireNamespace("pheatmap", quietly = TRUE)) {
-  install.packages("pheatmap")
+  install.packages("pheatmap", repos = "https://cloud.r-project.org")
 }
 
 library(pheatmap)
@@ -178,7 +178,7 @@ library(pheatmap)
 # ------------------------------------------------------------
 
 # Probe-IDs der 10 vom LASSO ausgewählten Gene
-selected_probes <- selected_genes_annotated$Gene
+selected_probes <- selected_genes_annotated$ProbeSet
 
 # Expressionswerte dieser Gene
 heatmap_matrix <- exprs(ALL)[selected_probes, ]
